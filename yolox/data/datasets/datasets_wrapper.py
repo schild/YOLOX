@@ -92,9 +92,7 @@ class Dataset(torchDataset):
         Return:
             list: Tuple containing the current width,height
         """
-        if hasattr(self, "_input_dim"):
-            return self._input_dim
-        return self.__input_dim
+        return self._input_dim if hasattr(self, "_input_dim") else self.__input_dim
 
     @staticmethod
     def mosaic_getitem(getitem_fn):
@@ -162,10 +160,10 @@ class CacheDataset(Dataset, metaclass=ABCMeta):
             self.cache_dir = os.path.join(data_dir, cache_dir_name)
             self.path_filename = path_filename
 
-        if self.cache and self.cache_type == "ram":
-            self.imgs = None
-
         if self.cache:
+            if self.cache_type == "ram":
+                self.imgs = None
+
             self.cache_images(
                 num_imgs=num_imgs,
                 data_dir=data_dir,
@@ -197,7 +195,7 @@ class CacheDataset(Dataset, metaclass=ABCMeta):
         assert num_imgs is not None, "num_imgs must be specified as the size of the dataset"
         if self.cache_type == "disk":
             assert (data_dir and cache_dir_name and path_filename) is not None, \
-                "data_dir, cache_name and path_filename must be specified if cache_type is disk"
+                    "data_dir, cache_name and path_filename must be specified if cache_type is disk"
             self.path_filename = path_filename
 
         mem = psutil.virtual_memory()
@@ -219,21 +217,20 @@ class CacheDataset(Dataset, metaclass=ABCMeta):
             if self.cache_type == 'ram':
                 self.imgs = [None] * num_imgs
                 logger.info("You are using cached images in RAM to accelerate training!")
-            else:   # 'disk'
-                if not os.path.exists(self.cache_dir):
-                    os.mkdir(self.cache_dir)
-                    logger.warning(
-                        f"\n*******************************************************************\n"
-                        f"You are using cached images in DISK to accelerate training.\n"
-                        f"This requires large DISK space.\n"
-                        f"Make sure you have {mem_required / gb:.1f} "
-                        f"available DISK space for training your dataset.\n"
-                        f"*******************************************************************\\n"
-                    )
-                else:
-                    logger.info(f"Found disk cache at {self.cache_dir}")
-                    return
+            elif os.path.exists(self.cache_dir):
+                logger.info(f"Found disk cache at {self.cache_dir}")
+                return
 
+            else:
+                os.mkdir(self.cache_dir)
+                logger.warning(
+                    f"\n*******************************************************************\n"
+                    f"You are using cached images in DISK to accelerate training.\n"
+                    f"This requires large DISK space.\n"
+                    f"Make sure you have {mem_required / gb:.1f} "
+                    f"available DISK space for training your dataset.\n"
+                    f"*******************************************************************\\n"
+                )
             logger.info(
                 "Caching images...\n"
                 "This might take some time for your dataset"
@@ -256,7 +253,7 @@ class CacheDataset(Dataset, metaclass=ABCMeta):
                     np.save(cache_path_filename, x)
                 b += x.nbytes
                 pbar.desc = \
-                    f'Caching images ({b / gb:.1f}/{mem_required / gb:.1f}GB {self.cache_type})'
+                        f'Caching images ({b / gb:.1f}/{mem_required / gb:.1f}GB {self.cache_type})'
             pbar.close()
 
     def cal_cache_occupy(self, num_imgs):
@@ -265,8 +262,7 @@ class CacheDataset(Dataset, metaclass=ABCMeta):
         for _ in range(num_samples):
             img = self.read_img(index=random.randint(0, num_imgs - 1), use_cache=False)
             cache_bytes += img.nbytes
-        mem_required = cache_bytes * num_imgs / num_samples
-        return mem_required
+        return cache_bytes * num_imgs / num_samples
 
 
 def cache_read_img(use_cache=True):

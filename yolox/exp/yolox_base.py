@@ -177,7 +177,7 @@ class Exp(BaseExp):
         if self.dataset is None:
             with wait_for_the_master():
                 assert cache_img is None, \
-                    "cache_img must be None if you didn't create self.dataset before launch"
+                        "cache_img must be None if you didn't create self.dataset before launch"
                 self.dataset = self.get_dataset(cache=False, cache_type=cache_img)
 
         self.dataset = MosaicDetection(
@@ -210,16 +210,13 @@ class Exp(BaseExp):
             mosaic=not no_aug,
         )
 
-        dataloader_kwargs = {"num_workers": self.data_num_workers, "pin_memory": True}
-        dataloader_kwargs["batch_sampler"] = batch_sampler
-
-        # Make sure each process has different random seed, especially for 'fork' method.
-        # Check https://github.com/pytorch/pytorch/issues/63311 for more details.
-        dataloader_kwargs["worker_init_fn"] = worker_init_reset_seed
-
-        train_loader = DataLoader(self.dataset, **dataloader_kwargs)
-
-        return train_loader
+        dataloader_kwargs = {
+            "num_workers": self.data_num_workers,
+            "pin_memory": True,
+            "batch_sampler": batch_sampler,
+            "worker_init_fn": worker_init_reset_seed,
+        }
+        return DataLoader(self.dataset, **dataloader_kwargs)
 
     def random_resize(self, data_loader, epoch, rank, is_distributed):
         tensor = torch.LongTensor(2).cuda()
@@ -324,11 +321,9 @@ class Exp(BaseExp):
             "num_workers": self.data_num_workers,
             "pin_memory": True,
             "sampler": sampler,
+            "batch_size": batch_size,
         }
-        dataloader_kwargs["batch_size"] = batch_size
-        val_loader = torch.utils.data.DataLoader(valdataset, **dataloader_kwargs)
-
-        return val_loader
+        return torch.utils.data.DataLoader(valdataset, **dataloader_kwargs)
 
     def get_evaluator(self, batch_size, is_distributed, testdev=False, legacy=False):
         from yolox.evaluators import COCOEvaluator
@@ -345,9 +340,7 @@ class Exp(BaseExp):
 
     def get_trainer(self, args):
         from yolox.core import Trainer
-        trainer = Trainer(self, args)
-        # NOTE: trainer shouldn't be an attribute of exp object
-        return trainer
+        return Trainer(self, args)
 
     def eval(self, model, evaluator, is_distributed, half=False, return_outputs=False):
         return evaluator.evaluate(model, is_distributed, half, return_outputs=return_outputs)

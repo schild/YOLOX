@@ -13,22 +13,21 @@ from models.yolox import YOLOX
 def build_yolox(name="yolox-s"):
     num_classes = 80
 
-    # value meaning: depth, width
-    param_dict = {
-        "yolox-nano": (0.33, 0.25),
-        "yolox-tiny": (0.33, 0.375),
-        "yolox-s": (0.33, 0.50),
-        "yolox-m": (0.67, 0.75),
-        "yolox-l": (1.0, 1.0),
-        "yolox-x": (1.33, 1.25),
-    }
     if name == "yolov3":
         depth = 1.0
         width = 1.0
         backbone = YOLOFPN()
         head = YOLOXHead(num_classes, width, in_channels=[128, 256, 512], act="lrelu")
-        model = YOLOX(backbone, head)
     else:
+        # value meaning: depth, width
+        param_dict = {
+            "yolox-nano": (0.33, 0.25),
+            "yolox-tiny": (0.33, 0.375),
+            "yolox-s": (0.33, 0.50),
+            "yolox-m": (0.67, 0.75),
+            "yolox-l": (1.0, 1.0),
+            "yolox-x": (1.33, 1.25),
+        }
         assert name in param_dict
         kwargs = {}
         depth, width = param_dict[name]
@@ -37,8 +36,7 @@ def build_yolox(name="yolox-s"):
         in_channels = [256, 512, 1024]
         backbone = YOLOPAFPN(depth, width, in_channels=in_channels, **kwargs)
         head = YOLOXHead(num_classes, width, in_channels=in_channels, **kwargs)
-        model = YOLOX(backbone, head)
-
+    model = YOLOX(backbone, head)
     for m in model.modules():
         if isinstance(m, M.BatchNorm2d):
             m.eps = 1e-3
