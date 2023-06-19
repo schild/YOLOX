@@ -201,16 +201,16 @@ class YOLOXHead(nn.Module):
                 origin_preds,
                 dtype=xin[0].dtype,
             )
-        else:
-            self.hw = [x.shape[-2:] for x in outputs]
-            # [batch, n_anchors_all, 85]
-            outputs = torch.cat(
-                [x.flatten(start_dim=2) for x in outputs], dim=2
-            ).permute(0, 2, 1)
-            if self.decode_in_inference:
-                return self.decode_outputs(outputs, dtype=xin[0].type())
-            else:
-                return outputs
+        self.hw = [x.shape[-2:] for x in outputs]
+        # [batch, n_anchors_all, 85]
+        outputs = torch.cat(
+            [x.flatten(start_dim=2) for x in outputs], dim=2
+        ).permute(0, 2, 1)
+        return (
+            self.decode_outputs(outputs, dtype=xin[0].type())
+            if self.decode_in_inference
+            else outputs
+        )
 
     def get_output_and_grid(self, output, k, stride, dtype):
         grid = self.grids[k]
@@ -485,7 +485,7 @@ class YOLOXHead(nn.Module):
         cost = (
             pair_wise_cls_loss
             + 3.0 * pair_wise_ious_loss
-            + float(1e6) * (~geometry_relation)
+            + 1000000.0 * ~geometry_relation
         )
 
         (

@@ -66,7 +66,7 @@ class BaseExp(metaclass=ABCMeta):
 
     def merge(self, cfg_list):
         assert len(cfg_list) % 2 == 0, f"length must be even, check value here: {cfg_list}"
-        for k, v in zip(cfg_list[0::2], cfg_list[1::2]):
+        for k, v in zip(cfg_list[::2], cfg_list[1::2]):
             # only update value with same key
             if hasattr(self, k):
                 src_value = getattr(self, k)

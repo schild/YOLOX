@@ -47,7 +47,7 @@ class Trainer:
         self.is_distributed = get_world_size() > 1
         self.rank = get_rank()
         self.local_rank = get_local_rank()
-        self.device = "cuda:{}".format(self.local_rank)
+        self.device = f"cuda:{self.local_rank}"
         self.use_model_ema = exp.ema
         self.save_history_ckpt = exp.save_history_ckpt
 
@@ -127,15 +127,13 @@ class Trainer:
         )
 
     def before_train(self):
-        logger.info("args: {}".format(self.args))
-        logger.info("exp value:\n{}".format(self.exp))
+        logger.info(f"args: {self.args}")
+        logger.info(f"exp value:\n{self.exp}")
 
         # model related init
         torch.cuda.set_device(self.local_rank)
         model = self.exp.get_model()
-        logger.info(
-            "Model Summary: {}".format(get_model_info(model, self.exp.test_size))
-        )
+        logger.info(f"Model Summary: {get_model_info(model, self.exp.test_size)}")
         model.to(self.device)
 
         # solver related init
@@ -189,7 +187,7 @@ class Trainer:
                 raise ValueError("logger must be either 'tensorboard' or 'wandb'")
 
         logger.info("Training start...")
-        logger.info("\n{}".format(model))
+        logger.info(f"\n{model}")
 
     def after_train(self):
         logger.info(
@@ -200,7 +198,7 @@ class Trainer:
                 self.wandb_logger.finish()
 
     def before_epoch(self):
-        logger.info("---> start train epoch{}".format(self.epoch + 1))
+        logger.info(f"---> start train epoch{self.epoch + 1}")
 
         if self.epoch + 1 == self.max_epoch - self.exp.no_aug_epochs or self.no_aug:
             logger.info("--->No mosaic aug now!")
@@ -237,9 +235,7 @@ class Trainer:
             eta_seconds = self.meter["iter_time"].global_avg * left_iters
             eta_str = "ETA: {}".format(datetime.timedelta(seconds=int(eta_seconds)))
 
-            progress_str = "epoch: {}/{}, iter: {}/{}".format(
-                self.epoch + 1, self.max_epoch, self.iter + 1, self.max_iter
-            )
+            progress_str = f"epoch: {self.epoch + 1}/{self.max_epoch}, iter: {self.iter + 1}/{self.max_iter}"
             loss_meter = self.meter.get_filtered_meter("loss")
             loss_str = ", ".join(
                 ["{}: {:.1f}".format(k, v.latest) for k, v in loss_meter.items()]
@@ -271,10 +267,8 @@ class Trainer:
                         self.tblogger.add_scalar(
                             f"train/{k}", v.latest, self.progress_in_iter)
                 if self.args.logger == "wandb":
-                    metrics = {"train/" + k: v.latest for k, v in loss_meter.items()}
-                    metrics.update({
-                        "train/lr": self.meter["lr"].latest
-                    })
+                    metrics = {f"train/{k}": v.latest for k, v in loss_meter.items()}
+                    metrics["train/lr"] = self.meter["lr"].latest
                     self.wandb_logger.log_metrics(metrics, step=self.progress_in_iter)
 
             self.meter.clear_meters()
@@ -310,10 +304,8 @@ class Trainer:
             )
             self.start_epoch = start_epoch
             logger.info(
-                "loaded checkpoint '{}' (epoch {})".format(
-                    self.args.resume, self.start_epoch
-                )
-            )  # noqa
+                f"loaded checkpoint '{self.args.resume}' (epoch {self.start_epoch})"
+            )
         else:
             if self.args.ckpt is not None:
                 logger.info("loading checkpoint for fine tuning")
@@ -361,7 +353,7 @@ class Trainer:
     def save_ckpt(self, ckpt_name, update_best_ckpt=False, ap=None):
         if self.rank == 0:
             save_model = self.ema_model.ema if self.use_model_ema else self.model
-            logger.info("Save weights to {}".format(self.file_name))
+            logger.info(f"Save weights to {self.file_name}")
             ckpt_state = {
                 "start_epoch": self.epoch + 1,
                 "model": save_model.state_dict(),

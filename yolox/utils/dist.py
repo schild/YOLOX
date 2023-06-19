@@ -42,10 +42,9 @@ def get_num_devices():
     gpu_list = os.getenv('CUDA_VISIBLE_DEVICES', None)
     if gpu_list is not None:
         return len(gpu_list.split(','))
-    else:
-        devices_list_info = os.popen("nvidia-smi -L")
-        devices_list_info = devices_list_info.read().strip().split("\n")
-        return len(devices_list_info)
+    devices_list_info = os.popen("nvidia-smi -L")
+    devices_list_info = devices_list_info.read().strip().split("\n")
+    return len(devices_list_info)
 
 
 @contextmanager
@@ -89,17 +88,13 @@ def synchronize():
 def get_world_size() -> int:
     if not dist.is_available():
         return 1
-    if not dist.is_initialized():
-        return 1
-    return dist.get_world_size()
+    return 1 if not dist.is_initialized() else dist.get_world_size()
 
 
 def get_rank() -> int:
     if not dist.is_available():
         return 0
-    if not dist.is_initialized():
-        return 0
-    return dist.get_rank()
+    return 0 if not dist.is_initialized() else dist.get_rank()
 
 
 def get_local_rank() -> int:
@@ -158,8 +153,7 @@ def _serialize_to_tensor(data, group):
             )
         )
     storage = torch.ByteStorage.from_buffer(buffer)
-    tensor = torch.ByteTensor(storage).to(device=device)
-    return tensor
+    return torch.ByteTensor(storage).to(device=device)
 
 
 def _pad_to_largest_tensor(tensor, group):
